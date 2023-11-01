@@ -5,21 +5,28 @@ from http import HTTPStatus
 from django.urls import reverse
 from pytest_django.asserts import assertRedirects
 
+HOME_URL = reverse('news:home')
+LOGIN_URL = reverse('users:login')
+LOGOUT_URL = reverse('users:logout')
+SIGNUP_URL = reverse('users:signup')
+DETAIL_URL = pytest.lazy_fixture('detail_url')
+EDIT_URL = pytest.lazy_fixture('edit_url')
+DELETE_URL = pytest.lazy_fixture('delete_url')
+
 
 @pytest.mark.parametrize(
-    'name, args',
+    'url',
     (
-        ('news:home', None),
-        ('news:detail', pytest.lazy_fixture('news_id_for_args')),
-        ('users:login', None),
-        ('users:logout', None),
-        ('users:signup', None),
+        HOME_URL,
+        DETAIL_URL,
+        LOGIN_URL,
+        LOGOUT_URL,
+        SIGNUP_URL,
     )
 )
 @pytest.mark.django_db
-def test_pages_availability_for_anonymous_user(client, name, args):
+def test_pages_availability_for_anonymous_user(client, url):
     """Доступность страниц для анонимного пользователя."""
-    url = reverse(name, args=args)
     response = client.get(url)
     assert response.status_code == HTTPStatus.OK
 
@@ -32,31 +39,31 @@ def test_pages_availability_for_anonymous_user(client, name, args):
     ),
 )
 @pytest.mark.parametrize(
-    'name',
-    ('news:edit', 'news:delete'),
+    'url',
+    (
+        EDIT_URL,
+        DELETE_URL
+    ),
 )
 def test_pages_availability_for_different_users(
-        parametrized_client, name, comment, expected_status
+        parametrized_client, expected_status, url
 ):
     """Страницы редактирования и удаления комментария доступны
     только автору.
     """
-    url = reverse(name, args=(comment.id,))
     response = parametrized_client.get(url)
     assert response.status_code == expected_status
 
 
 @pytest.mark.parametrize(
-    'name',
+    'url',
     (
-        'news:edit',
-        'news:delete',
+        EDIT_URL,
+        DELETE_URL
     ),
 )
-def test_redirects(client, name, comment):
+def test_redirects(client, url):
     """Анонимный пользователь перенаправляется на страницу авторизации."""
-    login_url = reverse('users:login')
-    url = reverse(name, args=(comment.id,))
-    expected_url = f'{login_url}?next={url}'
+    expected_url = f'{LOGIN_URL}?next={url}'
     response = client.get(url)
     assertRedirects(response, expected_url)

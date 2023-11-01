@@ -36,8 +36,8 @@ class TestContent(TestCase):
         url = reverse('notes:list')
         response = self.client.get(url)
         object_list = response.context['object_list']
-        notes_count = len(object_list)
-        self.assertEqual(notes_count, 1)
+        self.assertIn(self.note_author, object_list)
+        self.assertNotIn(self.note_reader, object_list)
 
     def test_authorized_client_has_form(self):
         """На страницы создания и редактирования заметки передаются формы."""
