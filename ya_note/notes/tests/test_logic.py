@@ -3,6 +3,7 @@ from http import HTTPStatus
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.core.exceptions import ObjectDoesNotExist
 
 from pytils.translit import slugify
 
@@ -33,16 +34,18 @@ class TestNoteCreation(TestCase):
 
     def test_anonymous_user_cant_create_note(self):
         """Анонимный пользователь не может создать заметку."""
+        notes_count_before = Note.objects.count()
         self.client.post(self.url, data=self.form_data)
-        notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 0)
+        notes_count_after = Note.objects.count()
+        self.assertEqual(notes_count_before, notes_count_after)
 
     def test_authorized_user_can_create_note(self):
         """Авторизованный пользователь может создать заметку."""
+        notes_count_before = Note.objects.count()
         response = self.auth_client.post(self.url, data=self.form_data)
         self.assertRedirects(response, self.success_url)
-        notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        notes_count_after = Note.objects.count()
+        self.assertEqual(notes_count_after, notes_count_before + 1)
         note = Note.objects.get()
         self.assertEqual(note.title, self.TITLE_FIELD)
         self.assertEqual(note.slug, self.SLUG_FIELD)
@@ -53,10 +56,11 @@ class TestNoteCreation(TestCase):
         то он формируется автоматически.
         """
         self.form_data.pop('slug')
+        notes_count_before = Note.objects.count()
         response = self.auth_client.post(self.url, data=self.form_data)
         self.assertRedirects(response, self.success_url)
-        notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        notes_count_after = Note.objects.count()
+        self.assertEqual(notes_count_after, notes_count_before + 1)
         new_note = Note.objects.get()
         expected_slug = slugify(self.form_data['title'])
         self.assertEqual(new_note.slug, expected_slug)
@@ -96,17 +100,24 @@ class TestNoteEditDelete(TestCase):
 
     def test_author_can_delete_note(self):
         """Авторизованный пользователь может удалять свои заметки."""
+        notes_count_before = Note.objects.count()
         response = self.author_client.delete(self.delete_url)
         self.assertRedirects(response, self.success_url)
-        notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 0)
+        notes_count_after = Note.objects.count()
+        self.assertEqual(notes_count_after, notes_count_before - 1)
+        try:
+            note = Note.objects.get(slug=self.note.slug)
+        except ObjectDoesNotExist:
+            note = None
+        self.assertEqual(note, None)
 
     def test_other_user_cant_delete_note(self):
         """Авторизованный пользователь не может удалять чужие заметки."""
+        notes_count_before = Note.objects.count()
         response = self.reader_client.delete(self.delete_url)
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        notes_count_after = Note.objects.count()
+        self.assertEqual(notes_count_after, notes_count_before)
 
     def test_author_can_edit_note(self):
         """Авторизованный пользователь может редактировать свои заметки."""
@@ -130,6 +141,7 @@ class TestNoteEditDelete(TestCase):
 
     def test_user_cant_use_slug_twice(self):
         """Невозможно создать заметки с одинаковым слаг."""
+        notes_count_before = Note.objects.count()
         response = self.author_client.post(
             self.add_url,
             data=self.new_form_data
@@ -140,7 +152,7 @@ class TestNoteEditDelete(TestCase):
             field='slug',
             errors=self.SLUG_FIELD + WARNING
         )
-        notes_count = Note.objects.count()
-        self.assertEqual(notes_count, 1)
+        notes_count_after = Note.objects.count()
+        self.assertEqual(notes_count_after, notes_count_before)
         self.note.refresh_from_db()
         self.assertEqual(self.note.title, self.TITLE_FIELD)

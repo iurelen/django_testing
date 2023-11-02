@@ -58,23 +58,6 @@ def comment(author, news):
 @pytest.fixture
 def comments_list(author, news):
     now = timezone.now()
-    # all_comments = [
-    #     Comment(news=news, author=author, text=f'Tекст {index}',)
-    #     for index in range(2)
-    # ]
-    # comments_list = Comment.objects.bulk_create(all_comments)
-    # for i in range(2):
-    #     comments_list[i].created = now + timedelta(days=i)
-    #     comments_list[i].save()
-    #     comments_list[i].refresh_from_db()
-    # breakpoint()
-    # return comments_list
-    #
-    # В теории было написано, что способ создания коменнтариев с 'bulk_create'
-    # не сработает, т.к. время создания комментария устанавливается
-    # автоматически и оно будет совпадать у всех комментариев. Поэтому
-    # сравнение по атрибуту created не получится сделать.
-    #
     for index in range(2):
         comment = Comment.objects.create(
             news=news, author=author, text=f'Tекст {index}',
